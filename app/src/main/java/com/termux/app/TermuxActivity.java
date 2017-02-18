@@ -49,6 +49,8 @@ import android.view.View.OnClickListener;
 import android.view.View.OnLongClickListener;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.view.animation.Animation;
+import android.view.animation.AnimationUtils;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
@@ -402,20 +404,20 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
 
             @Override
             public void onBell(TerminalSession session) {
-                if (mIsVisible) {
-                    switch (mSettings.mBellBehaviour) {
-                        case TermuxPreferences.BELL_BEEP:
-                            mBellSoundPool.play(mBellSoundId, 1.f, 1.f, 1, 0, 1.f);
-                            break;
-                        case TermuxPreferences.BELL_VIBRATE:
-                            ((Vibrator) getSystemService(VIBRATOR_SERVICE)).vibrate(50);
-                            break;
-                        case TermuxPreferences.BELL_IGNORE:
-                            // Ignore the bell character.
-                            break;
-                    }
+                if (!mIsVisible) return;
 
+                switch (mSettings.mBellBehaviour) {
+                    case TermuxPreferences.BELL_BEEP:
+                        mBellSoundPool.play(mBellSoundId, 1.f, 1.f, 1, 0, 1.f);
+                        break;
+                    case TermuxPreferences.BELL_VIBRATE:
+                        ((Vibrator) getSystemService(VIBRATOR_SERVICE)).vibrate(50);
+                        break;
+                    case TermuxPreferences.BELL_IGNORE:
+                        // Ignore the bell character.
+                        break;
                 }
+
             }
 
             @Override
@@ -492,17 +494,6 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
                     public void run() {
                         if (mTermService == null) return; // Activity might have been destroyed.
                         try {
-                            if (TermuxPreferences.isShowWelcomeDialog(TermuxActivity.this)) {
-                                new AlertDialog.Builder(TermuxActivity.this).setTitle(R.string.welcome_dialog_title).setMessage(R.string.welcome_dialog_body)
-                                    .setCancelable(false).setPositiveButton(android.R.string.ok, null)
-                                    .setNegativeButton(R.string.welcome_dialog_dont_show_again_button, new DialogInterface.OnClickListener() {
-                                        @Override
-                                        public void onClick(DialogInterface dialog, int which) {
-                                            TermuxPreferences.disableWelcomeDialog(TermuxActivity.this);
-                                            dialog.dismiss();
-                                        }
-                                    }).show();
-                            }
                             addNewSession(false, null);
                         } catch (WindowManager.BadTokenException e) {
                             // Activity finished - ignore.
@@ -514,7 +505,13 @@ public final class TermuxActivity extends Activity implements ServiceConnection 
                 finish();
             }
         } else {
-            switchToSession(getStoredCurrentSessionOrLast());
+            Intent i = getIntent();
+            if (i != null && Intent.ACTION_RUN.equals(i.getAction())) {
+                // Android 7.1 app shortcut from res/xml/shortcuts.xml.
+                addNewSession(false, null);
+            } else {
+                switchToSession(getStoredCurrentSessionOrLast());
+            }
         }
     }
 
